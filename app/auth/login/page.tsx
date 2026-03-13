@@ -21,7 +21,6 @@ export default function LoginPage() {
     setLoading(true)
     await new Promise(r => setTimeout(r, 1000))
 
-    // Définir le rôle selon l'email
     let role = 'investisseur'
     let redirectUrl = '/dashboard'
 
@@ -33,7 +32,6 @@ export default function LoginPage() {
       redirectUrl = '/cooperative/dashboard'
     }
 
-    // Setter les cookies pour le middleware
     document.cookie = `afund_token=demo_token_123; path=/; max-age=86400`
     document.cookie = `afund_role=${role}; path=/; max-age=86400`
 
@@ -76,7 +74,6 @@ export default function LoginPage() {
               type="email"
               value={form.email}
               onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
-              onKeyDown={e => e.key === 'Enter' && handleSubmit()}
               className="input-field w-full py-3 text-sm"
               placeholder="jean@exemple.ci"
               autoComplete="email"
@@ -95,7 +92,6 @@ export default function LoginPage() {
                 type={showPwd ? 'text' : 'password'}
                 value={form.password}
                 onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
-                onKeyDown={e => e.key === 'Enter' && handleSubmit()}
                 className="input-field w-full py-3 text-sm pr-10"
                 placeholder="••••••••"
                 autoComplete="current-password"
@@ -116,7 +112,7 @@ export default function LoginPage() {
               id="remember"
               checked={form.remember}
               onChange={e => setForm(p => ({ ...p, remember: e.target.checked }))}
-              className="w-4 h-4 rounded border-gray-300 text-green-600 accent-green-600"
+              className="w-4 h-4 rounded border-gray-300 accent-green-600"
             />
             <label htmlFor="remember" className="text-xs text-gray-500 cursor-pointer">
               Se souvenir de moi
@@ -141,13 +137,13 @@ export default function LoginPage() {
             <div className="flex-1 h-px bg-gray-100" />
           </div>
 
-          {/* Comptes de test */}
+          {/* Comptes demo */}
           <div className="space-y-2">
             <p className="text-xs text-gray-400 text-center mb-2">Accès rapide (démo)</p>
             {[
-              { label: 'Investisseur', email: 'jb.kouame@gmail.com', color: 'blue' },
-              { label: 'Coopérative', email: 'coop@agri-bouake.ci', color: 'green' },
-              { label: 'Admin', email: 'admin@afund.ci', color: 'purple' },
+              { label: 'Investisseur', email: 'jb.kouame@gmail.com' },
+              { label: 'Coopérative', email: 'coop@agri-bouake.ci' },
+              { label: 'Admin', email: 'admin@afund.ci' },
             ].map(demo => (
               <button
                 key={demo.email}
@@ -165,7 +161,7 @@ export default function LoginPage() {
         <p className="text-center text-sm text-gray-500 mt-6">
           Pas encore de compte ?{' '}
           <Link href="/auth/register" className="text-green-600 font-medium hover:underline">
-            S'inscrire gratuitement
+            S&apos;inscrire gratuitement
           </Link>
         </p>
 

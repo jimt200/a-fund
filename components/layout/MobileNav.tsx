@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, TrendingUp, Wallet, Bell, User,
-  Sprout, FileText, Users, BarChart3, ShieldCheck
+  Sprout, FileText, Users, BarChart3, ShieldCheck, LogOut
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -22,16 +22,17 @@ interface NavItem {
 
 interface MobileNavProps {
   navItems: NavItem[]
+  onLogout: () => void
 }
 
-export default function MobileNav({ navItems }: MobileNavProps) {
+export default function MobileNav({ navItems, onLogout }: MobileNavProps) {
   const pathname = usePathname()
 
-  // Prendre max 5 items pour la bottom nav
-  const visibleItems = navItems.slice(0, 5)
+  // Max 4 items pour laisser place au bouton déconnexion
+  const visibleItems = navItems.slice(0, 4)
 
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-100 safe-area-pb">
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-100">
       <div className="flex items-stretch">
         {visibleItems.map(item => {
           const Icon = iconMap[item.icon] || LayoutDashboard
@@ -71,10 +72,19 @@ export default function MobileNav({ navItems }: MobileNavProps) {
             </Link>
           )
         })}
+
+        {/* Bouton déconnexion */}
+        <button
+          onClick={onLogout}
+          className="flex-1 flex flex-col items-center justify-center py-2.5 px-1 gap-1 text-gray-400 hover:text-red-500 transition-colors"
+        >
+          <LogOut size={20} strokeWidth={1.8} />
+          <span className="text-xs leading-none">Quitter</span>
+        </button>
       </div>
 
-      {/* Safe area pour iPhone */}
-      <div className="h-safe-area-inset-bottom bg-white" />
+      {/* Safe area iPhone */}
+      <div style={{ height: 'env(safe-area-inset-bottom)' }} className="bg-white" />
     </nav>
   )
 }
