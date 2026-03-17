@@ -1,3 +1,6 @@
+'use client'
+
+import { useState } from 'react'
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -8,6 +11,7 @@ import {
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import CampaignCard from '@/components/campaign/CampaignCard'
+import CampaignMap from '@/components/campaign/CampaignMap'
 import Badge from '@/components/ui/Badge'
 import ProgressBar from '@/components/ui/ProgressBar'
 import { campaigns } from '@/lib/data'
@@ -16,13 +20,15 @@ import {
   calculateProgress, calculateDaysLeft, getRiskLabel, getRiskColor
 } from '@/lib/utils'
 
-export async function generateStaticParams() {
-  return campaigns.map(c => ({ id: c.slug }))
-}
+const QUICK_AMOUNTS = [10000, 50000, 100000, 250000]
 
 export default function CampaignDetailPage({ params }: { params: { id: string } }) {
   const campaign = campaigns.find(c => c.slug === params.id)
   if (!campaign) notFound()
+
+  const [montant, setMontant] = useState(50000)
+  const [assurance, setAssurance] = useState(false)
+  const [confirmed, setConfirmed] = useState(false)
 
   const progress = calculateProgress(campaign.montantLeve, campaign.montantCible)
   const daysLeft = calculateDaysLeft(campaign.dateFin)
@@ -32,6 +38,13 @@ export default function CampaignDetailPage({ params }: { params: { id: string } 
 
   const statusVariant = campaign.status === 'levee' ? 'success' : campaign.status === 'production' ? 'info' : 'gray'
   const statusLabel = campaign.status === 'levee' ? 'En levée' : campaign.status === 'production' ? 'En production' : 'Terminée'
+
+  const prixDynamiqueMultiplier = 1 + (progress / 100) * 0.2
+  const roiActuel = campaign.roiMin + ((campaign.roiMax - campaign.roiMin) * progress / 100)
+  const actions = Math.floor(montant / 2273)
+  const roi = Math.round(montant * roiActuel / 100)
+  const assuranceCout = assurance ? Math.round(montant * 0.03) : 0
+  const retourNet = montant + roi - assuranceCout
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -58,18 +71,11 @@ export default function CampaignDetailPage({ params }: { params: { id: string } 
 
             {/* Hero Image */}
             <div className="relative h-72 sm:h-96 rounded-2xl overflow-hidden">
-              <Image
-                src={campaign.image}
-                alt={campaign.titre}
-                fill
-                className="object-cover"
-              />
+              <Image src={campaign.image} alt={campaign.titre} fill className="object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
               <div className="absolute top-4 left-4 flex gap-2">
                 <Badge variant={statusVariant}>{statusLabel}</Badge>
-                {campaign.assurance && (
-                  <Badge variant="primary">🛡️ Assuré</Badge>
-                )}
+                {campaign.assurance && <Badge variant="primary">🛡️ Assuré</Badge>}
               </div>
             </div>
 
@@ -130,6 +136,19 @@ export default function CampaignDetailPage({ params }: { params: { id: string } 
               </div>
             </div>
 
+            {/* Carte géolocalisation */}
+            {campaign.lat && campaign.lng && (
+              <div className="card p-6">
+                <CampaignMap
+                  lat={campaign.lat}
+                  lng={campaign.lng}
+                  titre={campaign.titre}
+                  ville={campaign.ville}
+                  surface={campaign.surface}
+                />
+              </div>
+            )}
+
             {/* Purchase Contract */}
             <div className="card p-6">
               <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2" style={{ fontFamily: 'Georgia, serif' }}>
@@ -181,95 +200,192 @@ export default function CampaignDetailPage({ params }: { params: { id: string } 
           {/* Sidebar */}
           <div className="lg:col-span-1">
             <div className="sticky top-24 space-y-4">
-
-              {/* Investment Widget */}
               <div className="card p-6">
-                <h3 className="text-lg font-bold text-gray-900 mb-4" style={{ fontFamily: 'Georgia, serif' }}>
-                  Investir dans ce projet
-                </h3>
+                {!confirmed ? (
+                  <>
+                    <h3 className="text-lg font-bold text-gray-900 mb-1" style={{ fontFamily: 'Georgia, serif' }}>
+                      Investir dans cette campagne
+                    </h3>
+                    <p className="text-xs text-gray-400 mb-4">Minimum : 10 000 FCFA</p>
 
-                {/* Progress */}
-                <div className="mb-4">
-                  <div className="flex justify-between mb-2">
-                    <span className="font-bold text-primary-600 text-lg">
-                      {formatCurrency(campaign.montantLeve)}
-                    </span>
-                    <span className="text-gray-400 text-sm">
-                      sur {formatCurrency(campaign.montantCible)}
-                    </span>
-                  </div>
-                  <ProgressBar value={progress} />
-                  <div className="flex justify-between text-xs text-gray-500 mt-2">
-                    <span>{progress.toFixed(0)}% financé</span>
-                    <span className="flex items-center gap-1">
-                      <Users className="w-3 h-3" />{campaign.nombreInvestisseurs}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {daysLeft > 0 ? daysLeft + ' j.' : 'Terminé'}
-                    </span>
-                  </div>
-                </div>
+                    {/* Progress */}
+                    <div className="mb-4">
+                      <div className="flex justify-between mb-2">
+                        <span className="font-bold text-primary-600">{formatCurrency(campaign.montantLeve)}</span>
+                        <span className="text-gray-400 text-sm">sur {formatCurrency(campaign.montantCible)}</span>
+                      </div>
+                      <ProgressBar value={progress} />
+                      <div className="flex justify-between text-xs text-gray-500 mt-2">
+                        <span>{progress.toFixed(0)}% financé</span>
+                        <span className="flex items-center gap-1"><Users className="w-3 h-3" />{campaign.nombreInvestisseurs}</span>
+                        <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{daysLeft > 0 ? daysLeft + ' j.' : 'Terminé'}</span>
+                      </div>
+                    </div>
 
-                {/* ROI Calculator */}
-                <div className="bg-primary-50 rounded-xl p-4 mb-4">
-                  <p className="text-sm font-semibold text-primary-800 mb-3">
-                    Calculateur de rendement
-                  </p>
-                  <div className="space-y-2 text-sm">
-                    {[50000, 100000, 250000, 500000].map(amount => (
-                      <div key={amount} className="flex justify-between">
-                        <span className="text-gray-600">{formatCurrencyFull(amount)}</span>
-                        <span className="font-bold text-primary-700">
-                          +{formatCurrencyFull(Math.round(amount * campaign.roiMin / 100))}
-                        </span>
+                    {/* Prix dynamique */}
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs font-bold text-amber-800">Prix dynamique — avancement campagne</p>
+                        <span className="text-xs font-bold text-amber-700">{progress.toFixed(0)}% avancé</span>
+                      </div>
+                      <ProgressBar value={progress} color="warning" />
+                      <p className="text-xs text-amber-700 mt-2">
+                        Prix actuel : ×{prixDynamiqueMultiplier.toFixed(3)} du prix initial · 🌿
+                      </p>
+                      <p className="text-xs text-amber-600">
+                        {campaign.risque === 'faible' ? 'Culture établie — risque faible' : campaign.risque === 'modere' ? 'Culture établie — risque moyen' : 'Risque élevé'}
+                      </p>
+                    </div>
+
+                    {/* Montant */}
+                    <div className="mb-3">
+                      <label className="text-xs font-semibold text-gray-600 mb-1.5 block">
+                        Montant à investir (FCFA)
+                      </label>
+                      <input
+                        type="number"
+                        value={montant}
+                        onChange={e => setMontant(Math.max(10000, Number(e.target.value)))}
+                        className="input-field w-full text-lg font-bold py-3"
+                        step={10000}
+                        min={10000}
+                      />
+                    </div>
+
+                    {/* Quick amounts */}
+                    <div className="grid grid-cols-4 gap-2 mb-4">
+                      {QUICK_AMOUNTS.map(a => (
+                        <button
+                          key={a}
+                          onClick={() => setMontant(a)}
+                          className={`text-xs py-2 rounded-xl border font-semibold transition-all ${
+                            montant === a
+                              ? 'bg-green-600 text-white border-green-600'
+                              : 'bg-white text-gray-600 border-gray-200 hover:border-green-400'
+                          }`}
+                        >
+                          {a >= 1000 ? (a / 1000) + 'k' : a}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Assurance */}
+                    {campaign.assurance && (
+                      <div
+                        onClick={() => setAssurance(!assurance)}
+                        className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer mb-4 transition-all ${
+                          assurance ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-gray-50'
+                        }`}
+                      >
+                        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                          assurance ? 'bg-blue-500 border-blue-500' : 'border-gray-300'
+                        }`}>
+                          {assurance && <CheckCircle className="w-3 h-3 text-white" />}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <Shield className="w-4 h-4 text-blue-500" />
+                            <p className="text-sm font-semibold text-gray-800">Assurer mon investissement</p>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            Protection CNAAS contre les aléas climatiques · Coût : 3% du montant investi
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Récapitulatif */}
+                    <div className="bg-green-50 rounded-xl p-4 mb-4 space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Capital investi</span>
+                        <span className="font-bold text-gray-800">{formatCurrencyFull(montant)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Actions obtenues</span>
+                        <span className="font-bold text-gray-800">{actions} actions</span>
+                      </div>
+                      {assurance && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Assurance (3%)</span>
+                          <span className="font-bold text-red-500">-{formatCurrencyFull(assuranceCout)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">ROI actuel ({roiActuel.toFixed(1)}%)</span>
+                        <span className="font-bold text-green-600">+{formatCurrencyFull(roi)}</span>
+                      </div>
+                      <div className="border-t border-green-200 pt-2 flex justify-between">
+                        <span className="font-bold text-gray-800">Retour net estimé</span>
+                        <span className="font-bold text-green-700 text-lg">{formatCurrencyFull(retourNet)}</span>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => setConfirmed(true)}
+                      className="btn-primary w-full flex items-center justify-center gap-2 py-3"
+                    >
+                      Confirmer l&apos;investissement <ArrowRight className="w-4 h-4" />
+                    </button>
+                    <p className="text-xs text-gray-400 text-center mt-2">
+                      Paiement via Orange Money, MTN, Wave
+                    </p>
+                  </>
+                ) : (
+                  <div className="text-center py-4">
+                    <div className="text-5xl mb-4">🎉</div>
+                    <h3 style={{ fontFamily: 'Georgia, serif' }} className="text-xl font-bold text-gray-800 mb-2">
+                      Investissement simulé !
+                    </h3>
+                    <p className="text-sm text-gray-500 mb-6">
+                      Dans la version finale, votre paiement Mobile Money serait traité ici.
+                    </p>
+                    <div className="bg-green-50 rounded-xl p-4 mb-6">
+                      <p className="text-2xl font-bold text-green-700">{formatCurrencyFull(montant)}</p>
+                      <p className="text-sm text-green-600">investis dans {campaign.titre}</p>
+                      <p className="text-xs text-gray-500 mt-1">ROI attendu : +{formatCurrencyFull(roi)}</p>
+                    </div>
+                    <Link href="/dashboard" className="btn-primary w-full flex items-center justify-center gap-2 mb-3">
+                      Voir mon portfolio →
+                    </Link>
+                    <button onClick={() => setConfirmed(false)} className="text-xs text-gray-400 hover:text-gray-600">
+                      Recommencer
+                    </button>
+                  </div>
+                )}
+
+                {!confirmed && (
+                  <div className="mt-4 space-y-2 border-t border-gray-100 pt-4">
+                    {[
+                      "Contrat d'achat garanti",
+                      'Validation agronomique',
+                      campaign.assurance ? 'Assurance récolte disponible' : 'Rendement certifié',
+                    ].map(g => (
+                      <div key={g} className="flex items-center gap-2 text-xs text-gray-600">
+                        <CheckCircle className="w-4 h-4 text-primary-500 flex-shrink-0" />
+                        {g}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {!confirmed && (
+                <div className="card p-5">
+                  <h4 className="font-semibold text-gray-800 mb-3 text-sm">Calendrier</h4>
+                  <div className="space-y-3">
+                    {[
+                      { label: 'Début levée', date: campaign.dateDebut },
+                      { label: 'Fin levée', date: campaign.dateFin },
+                      { label: 'Récolte prévue', date: campaign.dateRecolte },
+                    ].map(item => (
+                      <div key={item.label} className="flex justify-between text-sm">
+                        <span className="text-gray-500">{item.label}</span>
+                        <span className="font-medium text-gray-800">{formatDate(item.date)}</span>
                       </div>
                     ))}
                   </div>
                 </div>
-
-                <Link
-                  href="/register"
-                  className="btn-primary w-full flex items-center justify-center gap-2"
-                >
-                  Investir maintenant <ArrowRight className="w-4 h-4" />
-                </Link>
-                <p className="text-xs text-gray-400 text-center mt-3">
-                  Minimum 5 000 FCFA · Sécurisé
-                </p>
-
-                {/* Guarantees */}
-                <div className="mt-4 space-y-2">
-                  {[
-                    "Contrat d'achat garanti",
-                    'Validation agronomique',
-                    campaign.assurance ? 'Assurance récolte incluse' : 'Rendement certifié',
-                  ].map(g => (
-                    <div key={g} className="flex items-center gap-2 text-xs text-gray-600">
-                      <CheckCircle className="w-4 h-4 text-primary-500 flex-shrink-0" />
-                      {g}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Calendar */}
-              <div className="card p-5">
-                <h4 className="font-semibold text-gray-800 mb-3 text-sm">Calendrier</h4>
-                <div className="space-y-3">
-                  {[
-                    { label: 'Début levée', date: campaign.dateDebut },
-                    { label: 'Fin levée', date: campaign.dateFin },
-                    { label: 'Récolte prévue', date: campaign.dateRecolte },
-                  ].map(item => (
-                    <div key={item.label} className="flex justify-between text-sm">
-                      <span className="text-gray-500">{item.label}</span>
-                      <span className="font-medium text-gray-800">{formatDate(item.date)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
+              )}
             </div>
           </div>
         </div>

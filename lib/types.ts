@@ -15,6 +15,8 @@ export interface Campaign {
   variete: string
   region: string
   ville: string
+  lat?: number
+  lng?: number
   cooperativeId: string
   cooperativeNom: string
   cooperativeMembers: number
